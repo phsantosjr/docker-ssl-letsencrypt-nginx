@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+   yoursite:
+      build: .
+      volumes:
+         - /opt/letsencrypt:/opt/letsencrypt
+         - /opt/letsencrypt-docker:/opt/script
+         - ./letsencrypt-logs:/var/log/letsencrypt
+         - /usr/share/nginx/html:/data/letsencrypt
+         - /opt/certs-data:/etc/letsencrypt/live
+         - /opt/certs/archive:/etc/letsencrypt/archive
+         - /opt/certs/renewal:/etc/letsencrypt/renewal
+      command: sh /opt/script/criar-ssl.sh yoursite.com

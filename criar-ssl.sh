@@ -1,0 +1,1 @@
+/opt/letsencrypt/letsencrypt-auto certonly -a webroot --webroot-path=/data/letsencrypt --agree-tos --email <seuemail@email.com> --force-renewal -d $1 -d www.$1

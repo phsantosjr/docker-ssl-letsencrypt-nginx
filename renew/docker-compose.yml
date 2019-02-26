@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+   letsencrypt:
+      build: .
+      volumes:
+         - /opt/letsencrypt:/opt/letsencrypt
+         - /opt/letsencrypt-docker/renew:/opt/script
+         - ./letsencrypt-logs:/var/log/letsencrypt
+         - /usr/share/nginx/html:/data/letsencrypt
+         - /opt/certs/live:/opt/certs/live
+         - /opt/certs/archive:/opt/certs/archive
+         - /opt/certs/renewal/:/etc/letsencrypt/renewal
+         - /opt/certs/accounts/:/etc/letsencrypt/accounts
+      command: sh /opt/script/renew-ssl.sh

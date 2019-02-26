@@ -1,0 +1,1 @@
+/opt/letsencrypt/certbot-auto renew

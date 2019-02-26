@@ -1,8 +1,13 @@
-# Docker + Let's Encrypt + Certbot - SSL/HTTPS criação e renovação#
+# Docker + Let's Encrypt + Certbot - SSL/HTTPS create and renovate#
 
-Projeto para criar e renovar o certificado SSL de sites utilizando Docker + Let's Encrypt, Certbot e Nginx
+This project you can use to manager your's SSL Certifieds using Docker Containers.
 
-Esse exemplo roda o NGINX via Docker e o proxy_pass roda em um projeto Django.
+
+In this example, we use NGINX as reverse project.
+
+## Version ##
+
+1.1
 
 
 ### Stack ###
@@ -20,58 +25,78 @@ Requer [Docker](https://docs.docker.com/install/) e
 [Docker Compose](https://docs.docker.com/compose/install/).
 
 
-### Configurar ambiente ? ###
+### Environment Configuration ###
 
-* Instalar o Docker no Ubuntu
+* How to install Docken in Ubuntu?
 
-Tutorial do [Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+[Docker Tutorial](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
 
-Tutorial do [Digital Ocean](https://www.digitalocean.com/community/tutorials/como-instalar-e-usar-o-docker-no-ubuntu-16-04-pt)
-
-
-* Instalar o Docker-Compose
-
-Tutorial do [Docker](https://docs.docker.com/compose/install/)
-
-Tutorial do [Digital Ocean](https://www.digitalocean.com/community/tutorials/how-to-install-docker-compose-on-ubuntu-16-04)
+[Digital Ocean Tutorial](https://www.digitalocean.com/community/tutorials/como-instalar-e-usar-o-docker-no-ubuntu-16-04-pt)
 
 
-* Clonar repositório com Certbot
+* Install Docker-Compose
+
+[Docker Tutorial](https://docs.docker.com/compose/install/)
+
+[Digital Ocean Tutorial](https://www.digitalocean.com/community/tutorials/how-to-install-docker-compose-on-ubuntu-16-04)
+
+
+## Clone repository from LetsEncrypt + Certbot ##
 
 ```
 sudo git clone https://github.com/letsencrypt/letsencrypt /opt/letsencrypt
 ```
 
-* Criar pasta /opt/letsencrypt-docker
 
-Essa pasta é onde ficarão os arquivos do ambiente docker (Dockerfile, docker-compose, etc)
+## Create folder called letsencrypt-docker ##
+
+This is the folder where you put your Docker and Docker-compose files.
+
+This folder will be inside /opt
 
 ```
 mkdir /opt/letsencrypt-docker
 ```
 
-* Criar pasta /opt/certs
 
-Essa pasta é onde o Docker salvará os arquivos do SSL. 
+## Create folder called letsencrypt-docker/renew ##
+
+This is the folder where you put your Docker and Docker-compose files to renew.
+
+This folder will be inside /opt/letsencrypt-docker
+
+```
+cd /opt/letsencrypt-docker
+
+mkdir renew
+```
+
+## Create folder certs ##
+
+This folder will be use to Docker to save the files to SSL
+
+This folder will be inside /opt
 
 ```
 mkdir /opt/certs
 ```
 
 
-* Criar pasta /opt/certs-data
+## Create folder called certs-data ##
+
+This folder will be inside /opt
 
 ```
 mkdir /opt/certs-data
 ```
 
-### NGINX configuração do well-know ###
+### NGINX well-know configuration ###
 
-## Criação ##
+#### Creating certified ###
 
 Colocar na opção server{} na porta 80, os location's de .well-known
 
-Veja o arquivo nginx.conf.
+Have a look in file nginx.conf.
 
 ```
   location ~ ^/.well-known {
@@ -84,25 +109,17 @@ Veja o arquivo nginx.conf.
 
 ```
 
-Após rodar o processo para criação do SSL precisará atualizar o .conf do seu site, como o arquivo nginx-443.conf
 
-## Atualização ##
+#### Renew ##
 
+Have a look into to file nginx-443.conf
 
-
-
-### NGINX configuração do certificado ###
-
-Exemplo de .conf do NGINX, usando um DOCKER como location.
-
-Observe que na porta 443 também tem a location well-know.
+Pay attention that in 443 port there is to the .well-konw location
 
 
-### Dockerfile ###
+## Docker File ##
 
-
-seusite.com.br.sh: nome do script .sh que será criado para execução do CertBot (explicação abaixo de como criar o script)
-
+#### Create ####
 
 ```
 FROM python:2.7
@@ -111,15 +128,89 @@ RUN apt-get update && apt-get install
 RUN pip install --upgrade pip
 
 RUN mkdir /opt/script
-ADD ./seusite.com.br.sh /opt/script
+ADD ./criar-ssl.sh /opt/script
 
 ENV PYTHONPATH $PYTHONPATH:/opt
 WORKDIR /opt/letsencrypt
+```
+
+
+#### Renew ####
+
+Put this file in folder /renew
+
+```
+FROM python:2.7
+
+RUN apt-get update && apt-get install
+RUN pip install --upgrade pip
+
+RUN mkdir /opt/script
+ADD ./renew-ssl.sh /opt/script
+
+ENV PYTHONPATH $PYTHONPATH:/opt
+WORKDIR /opt/letsencrypt
+```
+
+## File .sh to create and run in Docker ##
+
+We will call the fila as criar-ssl.sh
+
+```
+/opt/letsencrypt/letsencrypt-auto certonly -a webroot --webroot-path=/data/letsencrypt --agree-tos --email <seuemail@email.com> --force-renewal -d $1 -d www.$1
+
+
+```
+
+$1 is a parameter in .sh file. Here will enter the absolute url from the website.
+
+
+## File .sh to renew and run in Docker ##
+
+We will call the fila as renew-ssl.sh
+
+```
+/opt/letsencrypt/certbot-auto renew
 
 ```
 
 
 ### Docker Compose ###
+
+File to create:
+
+```
+version: '3'
+
+services:
+   yoursite:
+      build: .
+      volumes:
+         - /opt/letsencrypt:/opt/letsencrypt
+         - /opt/letsencrypt-docker:/opt/script
+         - ./letsencrypt-logs:/var/log/letsencrypt
+         - /usr/share/nginx/html:/data/letsencrypt
+         - /opt/certs-data:/etc/letsencrypt/live
+         - /opt/certs/archive:/etc/letsencrypt/archive
+         - /opt/certs/renewal:/etc/letsencrypt/renewal
+      command: sh /opt/script/criar-ssl.sh yoursite.com
+
+```
+
+
+What is each folder in volumes: 
+- /opt/letsencrypt:
+- /opt/letsencrypt-docker:
+- ./letsencrypt-logs:
+- /opt/certs-data: 
+- /usr/share/nginx/html:
+- /opt/certs-data:
+- /opt/certs/archive:
+- /opt/certs/renewal:
+
+
+
+File to renew (put this in file in folder /renew):
 
 ```
 version: '3'
@@ -129,57 +220,113 @@ services:
       build: .
       volumes:
          - /opt/letsencrypt:/opt/letsencrypt
-         - /opt/letsencrypt-docker:/opt/script
+         - /opt/letsencrypt-docker/renew:/opt/script
          - ./letsencrypt-logs:/var/log/letsencrypt
          - /usr/share/nginx/html:/data/letsencrypt
-         - /opt/certs-data:/etc/letsencrypt/live
-         - /opt/certs/archive:/etc/letsencrypt/archive
-      command: sh /opt/script/seusite.com.br.sh
-
+         - /opt/certs/live:/opt/certs/live
+         - /opt/certs/archive:/opt/certs/archive
+         - /opt/certs/renewal/:/etc/letsencrypt/renewal
+         - /opt/certs/accounts/:/etc/letsencrypt/accounts
+      command: sh /opt/script/renew-ssl.sh
 ```
 
 
-Pasta 
-- /opt/certs-data: local onde serão salvos os novos certificados
-
-
-### Script .sh para executar no Docker ###
-
-Crie o arquivo seusite.com.br.sh. Esse arquivo será passado como parâmetro para o Docker Compose
-
-email: seu endereço de e-mail para cadastro no Let's Encrypt e Certbot
-site: sua url que deseja criar o SSL
-
-#### Para criar SSL ###
+## How to execute docker-compose to create a SSL ##
 
 ```
-/opt/letsencrypt/letsencrypt-auto certonly -a webroot --webroot-path=/data/letsencrypt --agree-tos --email <email> -d <site> -d <site>
+docker-compose up yoursite
 ```
 
-#### Para renovar SSL ####
+yoursite it's the name of container in your docker-compose.yml
 
 
+## What happened after step above ? ##
 
-### Onde devo colocar os arquivos criados pelo Certbot###
-
-Depois que criar o certificado, precisará apontar os arquivos no .conf do nginx.
-
-São criados 4 arquivos:
+Certbot create 4 files to SSL:
 * cert.pem
 * chain.pem
 * fullchain.pem
 * privkey.pem
 
+Inside the path /opt/certs/live and /opt/certs/archive there is a folder with your site name.
 
-No .conf do Nginx, aponte o caminho onde você salvou esses arquivos.
-Não esqueça de compartilhar o volume do local com o nginx, caso você também rode o Nginx em Docker.
+In /opt/certs/live/yoursite.com are symbolic link files.
+
+In /opt/certs/archive/yoursite.com are the real files.
+
+In /opt/certs/renewal/yoursite.com are the files .conf used to renew process.
+
+Example of renewal.conf file:
 
 ```
-    ssl_certificate           /etc/letsencrypt/live/meusite.com.br/fullchain.pem;
-    ssl_certificate_key       /etc/letsencrypt/live/meusite.com.br/privkey.pem;
-    ssl_trusted_certificate   /etc/letsencrypt/live/meusite.com.br/chain.pem;
+# renew_before_expiry = 30 days
+version = 0.28.0
+archive_dir = /opt/certs/archive/yoursite.com
+cert = /opt/certs/live/yoursite.com/cert1.pem
+privkey = /opt/certs/live/yoursite.com/privkey1.pem
+chain = /opt/certs/live/yoursite.com/chain1.pem
+fullchain = /opt/certs/live/yoursite.com/fullchain1.pem
+
+# Options used in the renewal process
+[renewalparams]
+account = <your_key>
+server = https://acme-v02.api.letsencrypt.org/directory
+[[webroot_map]]
+yoursite.com = /data/letsencrypt
+www.yoursite.com = /data/letsencrypt
 
 ```
+
+
+## How To Execute docker-compose to renew a SSL ##
+
+```
+docker-compose up
+```
+
+## What happened after step above ? ##
+
+Certbot can show you some messages:
+
+
+You have success in renew:
+```
+
+letsencrypt_1  | Congratulations, all renewals succeeded. The following certs have been renewed:
+letsencrypt_1  |   /opt/certs/live/yoursite.com/fullchain1.pem (success)
+
+```
+
+OR
+
+```
+letsencrypt_1  | The following certs are not due for renewal yet:
+letsencrypt_1  |   /opt/certs/live/yoursite.com/fullchain1.pem expires on 2019-05-14 (skipped)
+letsencrypt_1  |   /opt/certs/live/yoursite-2.com/fullchain1.pem expires on 2019-05-27 (skipped)
+letsencrypt_1  |   /opt/certs/live/yoursite-3.com.com.br/fullchain1.pem expires on 2019-05-14 (skipped)
+letsencrypt_1  | No renewals were attempted.
+
+```
+
+These messages indicate that you don't have any certs to be renew, because you can (and it is recommended) renew certified that expires until 30 days
+
+If you have succes the CertBot will create a new file in /opt/certs/archive and update the symbolic link file in /opt/cert/live
+
+
+## Where I put the files name in NGINX.conf##
+
+Take a look in nginx-443.conf
+
+```
+    ssl_certificate           /etc/letsencrypt/live/yoursite.com/fullchain.pem;
+    ssl_certificate_key       /etc/letsencrypt/live/yoursite.com/privkey.pem;
+    ssl_trusted_certificate   /etc/letsencrypt/live/yoursite.com/chain.pem;
+
+```
+
+
+## Schedule Cron Job to automatic renew ##
+
 
 
 ### Autor ###
@@ -189,16 +336,17 @@ Paulo Henrique (PH)
 ### Roadmap ###
 
 
-#### 1.1 ####
+##### 1.1 ####
 
-* Renovação automática do SSL 
+* Renewing SSL Certified
 
-#### 1.0 ####
+##### 1.0 #####
 
-* Criação do SSL
+* Creating SSL Certified
 
 
-### Fontes ###
+## Fontes ##
+
 [Let's Encrypt] https://letsencrypt.org/
 
 [Nginx: Installing & Configuring Your SSL Certificate] https://www.digicert.com/csr-ssl-installation/nginx-openssl.htm#ssl_certificate_install
@@ -211,3 +359,6 @@ Paulo Henrique (PH)
 
 [Automating the letsencrypt certificate renewal] http://blog.nbellocam.me/2016/03/11/automating-the-letsencrypt-certificate-renewal/
 
+[Certbot - Github] https://github.com/certbot/certbot/blob/master/docs/using.rst#renewing-certificates
+
+[Certbot EFF] https://certbot.eff.org/docs/using.html#renewing-certificates
